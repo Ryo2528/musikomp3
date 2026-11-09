@@ -1,8 +1,8 @@
 {
-  "name": "musiko-mp3",
+  "name": "musiko-mp3-vercel",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
-  "scripts": { "start": "node server.mjs" }
+  "engines": { "node": "24.x" },
+  "scripts": { "build": "node scripts/install-tools.mjs" }
 }

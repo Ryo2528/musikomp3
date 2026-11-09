@@ -21,8 +21,8 @@ function status(element, message, error = false) {
   element.textContent = message;
 }
 
-async function post(path, payload) {
-  const response = await fetch(path, {
+async function post(payload) {
+  const response = await fetch('/api/track', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -62,11 +62,12 @@ prepareForm.addEventListener('submit', async event => {
   urlField.readOnly = true;
   track = null;
   showTrack();
-  status(exportStatus, 'Track details will appear when the audio is ready.');
-  status(prepareStatus, 'Preparing audio and cover art. This may take a minute.');
+  status(exportStatus, 'Track details will appear once the video is found.');
+  status(prepareStatus, 'Looking up the video and its track details…');
   try {
-    const response = await post('/api/prepare', { url: urlField.value.trim() });
-    track = await response.json();
+    const url = urlField.value.trim();
+    const response = await post({ action: 'inspect', url });
+    track = { ...await response.json(), url };
     showTrack();
     status(prepareStatus, 'Track ready. Review the details before downloading.');
     status(exportStatus, 'Your edits will be saved inside the MP3.');
@@ -107,18 +108,19 @@ exportForm.addEventListener('submit', async event => {
   if (!track || downloadButton.disabled) return;
   downloadButton.disabled = true;
   prepareButton.disabled = true;
-  status(exportStatus, 'Writing your track details to the MP3…');
+  status(exportStatus, 'Converting audio and writing your track details. This can take a minute…');
   try {
     const file = includeCover.checked && coverFile.files[0];
     const data = {
-      id: track.id,
+      action: 'convert',
+      url: track.url,
       title: title.value,
       artist: artist.value,
       album: album.value,
       includeCover: includeCover.checked,
       cover: file ? await encodeCover(file) : null
     };
-    const response = await post('/api/export', data);
+    const response = await post(data);
     const filename = response.headers.get('Content-Disposition')?.split("filename*=UTF-8''")[1];
     const objectUrl = URL.createObjectURL(await response.blob());
     const link = document.createElement('a');
