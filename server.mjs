@@ -16,6 +16,7 @@ const port = Number(process.env.PORT || 8787);
 const origin = `http://${host}:${port}`;
 const ytDlp = process.env.YT_DLP || 'yt-dlp';
 const ffmpeg = process.env.FFMPEG || 'ffmpeg';
+const workDir = process.env.MUSIKO_WORK_DIR || tmpdir();
 const coverLimit = 2 * 1024 * 1024;
 const ttl = 20 * 60_000;
 const jobs = new Map();
@@ -109,7 +110,7 @@ async function prepare(value) {
       if (!oldest) throw new RequestError(429, 'Wait for the current downloads to finish.');
       await removeJob(...oldest);
     }
-    dir = await mkdtemp(join(tmpdir(), 'musiko-mp3-'));
+    dir = await mkdtemp(join(workDir, 'musiko-mp3-'));
     const args = [
       '--ignore-config', '--no-plugin-dirs', '--no-playlist', '--no-cache-dir', '--no-progress',
       '--js-runtimes', `node:${process.execPath}`, '--socket-timeout', '15', '--retries', '2',
@@ -253,7 +254,12 @@ server.on('error', error => {
   console.error(error.code === 'EADDRINUSE' ? `${origin} is already in use.` : error.message);
   process.exitCode = 1;
 });
-server.listen(port, host, () => console.log(`Musiko MP3 is ready at ${origin}`));
+server.listen(port, host, () => {
+  console.log(`Musiko MP3 is ready at ${origin}`);
+  if (process.platform === 'win32' && process.env.MUSIKO_OPEN_BROWSER === '1') {
+    execFile('rundll32.exe', ['url.dll,FileProtocolHandler', origin], { windowsHide: true });
+  }
+});
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.once(signal, () => {
